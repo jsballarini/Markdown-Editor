@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<!--
+  Project: Markdown Editor
+  Author: Juliano Ballarini
+  GitHub: https://github.com/jsballarini
+  LinkedIn: https://www.linkedin.com/in/juliano-ballarini-703098ba/
+  License: MIT
+  Copyright (c) 2026 Juliano Ballarini
+-->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador Markdown Perseus Hub</title>
+    <!-- Marked para Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify para segurança -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <!-- Mermaid para diagramas -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #24292f;
+            --header-bg: #f6f8fa;
+            --border-color: #d0d7de;
+            --code-bg: #f6f8fa;
+            --pre-bg: #f6f8fa;
+            --link-color: #0969da;
+            --accent-color: #0969da;
+            --error-color: #cf222e;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        body {
+            font-family: var(--font-family);
+            line-height: 1.5;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 980px;
+            width: 100%;
+            background: white;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .controls {
+            width: 100%;
+            max-width: 980px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: var(--header-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1.app-title {
+            margin: 0;
+            font-size: 1.5em;
+            color: var(--text-color);
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .btn {
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            background-color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--header-bg);
+        }
+        
+        input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        #markdown-content {
+            margin-top: 20px;
+        }
+
+        /* Markdown Styles (GitHub-like) */
+        #markdown-content h1, #markdown-content h2, #markdown-content h3 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: .3em;
+        }
+        
+        #markdown-content h1 { font-size: 2em; }
+        #markdown-content h2 { font-size: 1.5em; }
+        #markdown-content h3 { font-size: 1.25em; border-bottom: none; }
+
+        #markdown-content p {
+            margin-bottom: 16px;
+        }
+
+        #markdown-content a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        
+        #markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        #markdown-content code {
+            padding: .2em .4em;
+            margin: 0;
+            font-size: 85%;
+            background-color: var(--code-bg);
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+        }
+
+        #markdown-content pre {
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background-color: var(--pre-bg);
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        #markdown-content pre code {
+            padding: 0;
+            margin: 0;
+            background-color: transparent;
+            border-radius: 0;
+            white-space: pre;
+            word-break: normal; 
+        }
+
+        #markdown-content blockquote {
+            padding: 0 1em;
+            color: #57606a;
+            border-left: .25em solid var(--border-color);
+            margin: 0 0 16px 0;
+        }
+
+        #markdown-content ul, #markdown-content ol {
+            padding-left: 2em;
+            margin-bottom: 16px;
+        }
+
+        #markdown-content table {
+            border-spacing: 0;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            width: 100%;
+            overflow: auto; 
+            display: block; 
+        }
+
+        #markdown-content table th,
+        #markdown-content table td {
+            padding: 6px 13px;
+            border: 1px solid var(--border-color);
+        }
+
+        #markdown-content table tr {
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        #markdown-content table tr:nth-child(2n) {
+            background-color: var(--header-bg);
+        }
+
+        /* Error Message */
+        .error-message {
+            color: var(--error-color);
+            background-color: #ffebe9;
+            border: 1px solid rgba(255,129,130,0.4);
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        /* Mermaid */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h1 class="app-title">Visualizador Markdown</h1>
+        <div class="file-upload-wrapper">
+            <button class="btn">Selecionar Arquivo .md</button>
+            <input type="file" id="fileInput" accept=".md,.markdown,.txt">
+        </div>
+        <span id="fileName" style="margin-left: 10px; color: #57606a; font-size: 0.9em;">Nenhum arquivo selecionado</span>
+    </div>
+
+    <div class="container">
+        <div id="errorMessage" class="error-message"></div>
+        <div id="markdown-content">
+            <p style="color: #57606a; text-align: center;">Selecione um arquivo Markdown para visualizar o conteúdo aqui.</p>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar Mermaid
+        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+        const fileInput = document.getElementById('fileInput');
+        const contentDiv = document.getElementById('markdown-content');
+        const errorDiv = document.getElementById('errorMessage');
+        const fileNameSpan = document.getElementById('fileName');
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            
+            // Resetar estados
+            errorDiv.style.display = 'none';
+            contentDiv.innerHTML = '<p style="color: #57606a; text-align: center;">Carregando...</p>';
+            
+            if (!file) {
+                fileNameSpan.textContent = "Nenhum arquivo selecionado";
+                contentDiv.innerHTML = '<p style="color: #57606a; text-align: center;">Selecione um arquivo Markdown para visualizar o conteúdo aqui.</p>';
+                return;
+            }
+
+            fileNameSpan.textContent = file.name;
+
+            // Validar extensão
+            const validExtensions = ['.md', '.markdown', '.txt'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validExtensions.includes(fileExtension) && file.type !== 'text/markdown' && file.type !== 'text/plain') {
+                showError('Formato de arquivo não suportado. Por favor, selecione um arquivo .md ou .markdown.');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const text = e.target.result;
+                    renderMarkdown(text);
+                } catch (err) {
+                    showError('Erro ao processar o arquivo: ' + err.message);
+                }
+            };
+            
+            reader.onerror = function() {
+                showError('Erro ao ler o arquivo.');
+            };
+
+            reader.readAsText(file);
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            contentDiv.innerHTML = '';
+        }
+
+        async function renderMarkdown(markdownText) {
+            try {
+                // Configurar marked para usar highlight.js se necessário (opcional, aqui focado em estrutura)
+                // e para lidar com quebras de linha
+                marked.setOptions({
+                    gfm: true,
+                    breaks: true
+                });
+
+                // Pré-processamento para Mermaid (opcional, mas ajuda a evitar conflitos)
+                // O marked vai processar o bloco de código, então precisamos interceptar ou deixar o mermaid rodar depois
+                
+                // Converter Markdown para HTML
+                const rawHtml = marked.parse(markdownText);
+                
+                // Sanitizar HTML
+                const cleanHtml = DOMPurify.sanitize(rawHtml, {
+                    ADD_TAGS: ['mermaid'], // Se usarmos custom tags, mas mermaid geralmente usa div.mermaid
+                    ADD_ATTR: ['class'] 
+                });
+
+                contentDiv.innerHTML = cleanHtml;
+
+                // Processar blocos de código Mermaid
+                // O marked converte ```mermaid em <pre><code class="language-mermaid">...</code></pre>
+                // O mermaid.js procura por <div class="mermaid"> ou similar.
+                // Vamos transformar os blocos de código mermaid em divs para o mermaid.js renderizar
+                
+                const mermaidBlocks = contentDiv.querySelectorAll('code.language-mermaid');
+                
+                if (mermaidBlocks.length > 0) {
+                    // Converter cada bloco
+                    mermaidBlocks.forEach((block, index) => {
+                        const pre = block.parentElement;
+                        const div = document.createElement('div');
+                        div.className = 'mermaid';
+                        div.textContent = block.textContent;
+                        // Substituir o <pre> pelo <div>
+                        pre.parentNode.replaceChild(div, pre);
+                    });
+
+                    // Renderizar diagramas
+                    await mermaid.run({
+                        nodes: document.querySelectorAll('.mermaid')
+                    });
+                }
+
+            } catch (err) {
+                console.error(err);
+                showError('Erro ao renderizar Markdown: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
+
